@@ -9,6 +9,9 @@ export default function useTuner(referenceFrequency = 440) {
   const [frequency, setFrequency] = useState<number | null>(null);
   const [note, setNote] = useState("");
   const [isTuning, setIsTuning] = useState(false);
+  const [deviation, setDeviation] = useState(0);
+
+  let recording: any;
 
   const startTuning = async () => {
     const { granted } = await Audio.requestPermissionsAsync();
@@ -17,7 +20,7 @@ export default function useTuner(referenceFrequency = 440) {
       return;
     }
 
-    const recording = new Audio.Recording();
+    recording = new Audio.Recording();
     await recording.prepareToRecordAsync(
     //   Audio.RECORDING_OPTIONS_PRESET_LOW_QUALITY
     );
@@ -27,6 +30,10 @@ export default function useTuner(referenceFrequency = 440) {
   };
 
   const processAudio = async (recording: Audio.Recording) => {
+    const audioData = await recording.createNewLoadedSoundAsync();
+    audioData.sound.setOnPlaybackStatusUpdate(status => {
+      
+    })
     const audioBuffer = await extractAudioData(recording);
     const detectedFrequency = detectPitch(audioBuffer);
 
@@ -40,7 +47,7 @@ export default function useTuner(referenceFrequency = 440) {
     }
   };
 
-  const stopTuning = async (recording: Audio.Recording) => {
+  const stopTuning = async () => {
     await recording.stopAndUnloadAsync();
     setIsTuning(false);
   };
@@ -73,5 +80,5 @@ export default function useTuner(referenceFrequency = 440) {
     }
   }
 
-  return { frequency, note, isTuning, startTuning, stopTuning };
+  return { frequency, note, isTuning, startTuning, stopTuning, deviation };
 }

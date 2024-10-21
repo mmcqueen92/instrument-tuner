@@ -4,7 +4,7 @@ export interface NeedleProps {
 
 export interface TunerDisplayProps {
   frequency: number | null;
-  note: string;
+  note?: string;
   deviation: number;
 }
 
