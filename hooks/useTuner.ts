@@ -44,6 +44,7 @@ export default function useTuner(referenceFrequency = 440) {
         referenceFrequency
       );
       setNote(closestNote.note);
+      setDeviation(closestNote.deviation);
     }
   };
 
