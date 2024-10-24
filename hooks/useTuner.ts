@@ -21,9 +21,10 @@ export default function useTuner(referenceFrequency = 440) {
     }
 
     recording = new Audio.Recording();
-    await recording.prepareToRecordAsync(
-    //   Audio.RECORDING_OPTIONS_PRESET_LOW_QUALITY
-    );
+    await recording
+      .prepareToRecordAsync
+      //   Audio.RECORDING_OPTIONS_PRESET_LOW_QUALITY
+      ();
     await recording.startAsync();
     setIsTuning(true);
     processAudio(recording);
@@ -31,9 +32,7 @@ export default function useTuner(referenceFrequency = 440) {
 
   const processAudio = async (recording: Audio.Recording) => {
     const audioData = await recording.createNewLoadedSoundAsync();
-    audioData.sound.setOnPlaybackStatusUpdate(status => {
-      
-    })
+    audioData.sound.setOnPlaybackStatusUpdate((status) => {});
     const audioBuffer = await extractAudioData(recording);
     const detectedFrequency = detectPitch(audioBuffer);
 
@@ -57,24 +56,20 @@ export default function useTuner(referenceFrequency = 440) {
     recording: Audio.Recording
   ): Promise<Float32Array> {
     try {
-      // Get the URI of the recorded audio file
       const recordingUri = recording.getURI();
 
       if (!recordingUri) {
         throw new Error("No audio URI found");
       }
 
-      // Get the audio file's contents
       const fileInfo = await fetch(recordingUri);
       const audioFileBlob = await fileInfo.blob();
 
-      // Read the audio file as an ArrayBuffer
       const arrayBuffer = await audioFileBlob.arrayBuffer();
 
-      // Convert the ArrayBuffer to a Float32Array which is needed for pitch detection
       const audioData = new Float32Array(arrayBuffer);
 
-      return audioData; // This data can be processed by the pitch detection algorithm
+      return audioData;
     } catch (error) {
       console.error("Error extracting audio data:", error);
       return new Float32Array();

@@ -1,9 +1,3 @@
-export const noteFrequencies = [
-  { note: "C4", frequency: 261.63 },
-  { note: "C#4", frequency: 277.18 },
-  // Add all note frequencies here...
-];
-
 const noteNames = [
   "C0",
   "C#0",
@@ -118,7 +112,8 @@ export function mapFrequencyToNote(
   frequency: number,
   referenceFrequency = 440
 ) {
-  // Map detected frequency to closest note
+  const noteFrequencies = generateNoteFrequencies(referenceFrequency);
+
   const closest = noteFrequencies.reduce((prev, curr) =>
     Math.abs(curr.frequency - frequency) < Math.abs(prev.frequency - frequency)
       ? curr
@@ -126,5 +121,6 @@ export function mapFrequencyToNote(
   );
 
   const deviation = frequency - closest.frequency;
+
   return { note: closest.note, deviation };
 }
