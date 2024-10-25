@@ -2,6 +2,7 @@ import { Audio } from "expo-av";
 import { useEffect, useState } from "react";
 import Pitchfinder from "pitchfinder";
 import { mapFrequencyToNote } from "../utils/frequencyUtils";
+import * as FileSystem from "expo-file-system";
 
 const detectPitch = Pitchfinder.AMDF();
 
@@ -11,7 +12,8 @@ export default function useTuner(referenceFrequency = 440) {
   const [isTuning, setIsTuning] = useState(false);
   const [deviation, setDeviation] = useState(0);
 
-  let recording: any;
+  let recording: Audio.Recording | null = null;
+  let intervalId: NodeJS.Timeout | null = null;
 
   const startTuning = async () => {
     const { granted } = await Audio.requestPermissionsAsync();
@@ -21,18 +23,17 @@ export default function useTuner(referenceFrequency = 440) {
     }
 
     recording = new Audio.Recording();
-    await recording
-      .prepareToRecordAsync
-      //   Audio.RECORDING_OPTIONS_PRESET_LOW_QUALITY
-      ();
+    await recording.prepareToRecordAsync();
     await recording.startAsync();
     setIsTuning(true);
-    processAudio(recording);
+
+    // Start the continuous sampling loop
+    intervalId = setInterval(() => {
+      processAudio(recording!);
+    }, 100); // Process every 100ms for near real-time updates
   };
 
   const processAudio = async (recording: Audio.Recording) => {
-    const audioData = await recording.createNewLoadedSoundAsync();
-    audioData.sound.setOnPlaybackStatusUpdate((status) => {});
     const audioBuffer = await extractAudioData(recording);
     const detectedFrequency = detectPitch(audioBuffer);
 
@@ -48,33 +49,47 @@ export default function useTuner(referenceFrequency = 440) {
   };
 
   const stopTuning = async () => {
-    await recording.stopAndUnloadAsync();
+    if (recording) {
+      await recording.stopAndUnloadAsync();
+      recording = null;
+    }
+    if (intervalId) {
+      clearInterval(intervalId);
+      intervalId = null;
+    }
     setIsTuning(false);
   };
 
-  async function extractAudioData(
-    recording: Audio.Recording
-  ): Promise<Float32Array> {
-    try {
-      const recordingUri = recording.getURI();
+async function extractAudioData(
+  recording: Audio.Recording
+): Promise<Float32Array> {
+  try {
+    const recordingUri = recording.getURI();
+    console.log("Recording URI:", recordingUri);
+    if (!recordingUri) throw new Error("No audio URI found");
 
-      if (!recordingUri) {
-        throw new Error("No audio URI found");
-      }
+    const fileContents = await FileSystem.readAsStringAsync(recordingUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
 
-      const fileInfo = await fetch(recordingUri);
-      const audioFileBlob = await fileInfo.blob();
+    // Convert base64 string to ArrayBuffer
+    const arrayBuffer = Uint8Array.from(atob(fileContents), (c) =>
+      c.charCodeAt(0)
+    ).buffer;
 
-      const arrayBuffer = await audioFileBlob.arrayBuffer();
-
-      const audioData = new Float32Array(arrayBuffer);
-
-      return audioData;
-    } catch (error) {
-      console.error("Error extracting audio data:", error);
-      return new Float32Array();
-    }
+    return new Float32Array(arrayBuffer);
+  } catch (error) {
+    console.error("Error extracting audio data:", error);
+    return new Float32Array();
   }
+}
+
+  useEffect(() => {
+    return () => {
+      // Cleanup interval and recording on unmount
+      stopTuning();
+    };
+  }, []);
 
   return { frequency, note, isTuning, startTuning, stopTuning, deviation };
 }
